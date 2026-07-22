@@ -156,7 +156,7 @@ build_target() {
     # Build the binary. We pass --profile release-dist for optimised LTO builds.
     # The .GLIBC suffix on the target tells cargo-zigbuild to pin glibc.
     if [ -n "$extra_rustflags" ]; then
-        RUSTFLAGS="$RUSTFLAGS $extra_rustflags" \
+        RUSTFLAGS="${RUSTFLAGS:-} $extra_rustflags" \
             cargo zigbuild \
                 --profile "$PROFILE" \
                 --target "$zig_target" \
