@@ -139,10 +139,11 @@ build_target() {
     info "Building $platform_tag (target: $zig_target)..."
 
     # ── compile ──────────────────────────────────────────────────────────────
-    # Environment:
-    #   GROK_VERSION — baked into the binary at compile time
-    #   CARGO_PROFILE_* — override profile settings for smaller binaries
     export GROK_VERSION="$VERSION"
+
+    # Zig's clang promotes -Wdate-time to error; libmimalloc-sys and other C
+    # crates use __DATE__/__TIME__ macros. Suppress globally for all targets.
+    export CFLAGS="${CFLAGS:-} -Wno-date-time"
 
     # For Windows GNU target, ensure static CRT linking.
     local extra_rustflags=""
