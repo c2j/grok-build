@@ -168,29 +168,25 @@ build_target() {
     # crates use __DATE__/__TIME__ macros. Suppress globally for all targets.
     export CFLAGS="${CFLAGS:-} -Wno-date-time"
 
-    # For Windows GNU target, ensure static CRT linking.
-    local extra_rustflags=""
+    # ── per-target RUSTFLAGS ─────────────────────────────────────────────────
+    # RUSTFLAGS env var replaces target.*.rustflags from .cargo/config.toml.
+    # aarch64-linux: override target-cpu=neoverse-v2 (Graviton-only) → generic
     case "$rust_target" in
+        aarch64-unknown-linux-gnu)
+            export RUSTFLAGS="-C target-cpu=generic -C force-unwind-tables=yes"
+            ;;
+        x86_64-unknown-linux-gnu)
+            export RUSTFLAGS="-C force-unwind-tables=yes"
+            ;;
         *windows-gnu*)
-            # Static CRT + strip exception tables for smaller binaries
-            extra_rustflags="-C target-feature=+crt-static"
+            export RUSTFLAGS="-C force-unwind-tables=yes -C target-feature=+crt-static"
             ;;
     esac
 
-    # Build the binary. We pass --profile release-dist for optimised LTO builds.
-    # The .GLIBC suffix on the target tells cargo-zigbuild to pin glibc.
-    if [ -n "$extra_rustflags" ]; then
-        RUSTFLAGS="${RUSTFLAGS:-} $extra_rustflags" \
-            cargo zigbuild \
-                --profile "$PROFILE" \
-                --target "$zig_target" \
-                -p xai-grok-pager-bin
-    else
-        cargo zigbuild \
-            --profile "$PROFILE" \
-            --target "$zig_target" \
-            -p xai-grok-pager-bin
-    fi
+    cargo zigbuild \
+        --profile "$PROFILE" \
+        --target "$zig_target" \
+        -p xai-grok-pager-bin
 
     # ── locate the built binary ──────────────────────────────────────────────
     # cargo-zigbuild puts output under target/<rust_target>/<profile>/
@@ -211,31 +207,18 @@ build_target() {
 
     cp "$bin_path" "$stage/$ship_artifact"
 
-    # Optionally strip debug symbols for smaller distribution size.
-    # release-dist keeps debug=1 (line tables) by default; stripping removes
-    # them for end-user binaries. Debug sidecars can be extracted separately.
+    # Strip debug symbols using llvm-strip from the Rust toolchain.
+    # llvm-strip handles all architectures (ELF, PE) — the system `strip`
+    # only handles the host architecture and fails on cross-compiled binaries.
     if [ "${STRIP_BIN:-0}" = "1" ]; then
-        case "$rust_target" in
-            *windows*)
-                # Use llvm-strip if available (comes with Rust toolchain)
-                local strip_tool
-                strip_tool=$(find "$(rustc --print sysroot)" -name 'llvm-strip' 2>/dev/null | head -1)
-                if [ -n "$strip_tool" ] && [ -x "$strip_tool" ]; then
-                    "$strip_tool" "$stage/$ship_artifact"
-                    ok "Stripped debug symbols (llvm-strip)."
-                else
-                    warn "llvm-strip not found; skipping strip for Windows binary."
-                fi
-                ;;
-            *linux*)
-                if command -v strip >/dev/null 2>&1; then
-                    strip "$stage/$ship_artifact" || warn "strip failed (non-fatal)."
-                    ok "Stripped debug symbols (strip)."
-                else
-                    warn "strip not found; skipping."
-                fi
-                ;;
-        esac
+        local strip_tool
+        strip_tool=$(find "$(rustc --print sysroot)" -name 'llvm-strip' 2>/dev/null | head -1)
+        if [ -n "$strip_tool" ] && [ -x "$strip_tool" ]; then
+            "$strip_tool" --strip-debug "$stage/$ship_artifact"
+            ok "Stripped debug symbols (llvm-strip --strip-debug)."
+        else
+            warn "llvm-strip not found in Rust sysroot; binary will be large."
+        fi
     fi
 
     # ── zip ──────────────────────────────────────────────────────────────────
