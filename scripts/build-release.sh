@@ -75,10 +75,10 @@ check_prereqs() {
     command -v cargo >/dev/null 2>&1 || missing+=("cargo (Rust)")
     command -v zip >/dev/null 2>&1   || missing+=("zip")
 
-    # cargo-zigbuild is required for cross-compilation with glibc pinning
-    if ! cargo zigbuild --version >/dev/null 2>&1; then
-        missing+=("cargo-zigbuild (cargo install cargo-zigbuild)")
-    fi
+    # cargo-zigbuild is required for cross-compilation with glibc pinning.
+    # Check for the binary directly — `cargo zigbuild --version` is not a
+    # reliable probe (cargo's subcommand dispatch returns non-zero in some setups).
+    command -v cargo-zigbuild >/dev/null 2>&1 || missing+=("cargo-zigbuild (cargo install cargo-zigbuild)")
 
     # Zig is the C compiler / linker backend for cargo-zigbuild
     command -v zig >/dev/null 2>&1 || missing+=("zig (https://ziglang.org/download/)")
