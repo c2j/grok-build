@@ -141,6 +141,29 @@ build_target() {
     # ── compile ──────────────────────────────────────────────────────────────
     export GROK_VERSION="$VERSION"
 
+    # xai-grok-tools and xai-grok-shell build.rs each download ripgrep from
+    # GitHub during release builds. On network-restricted hosts this times out.
+    # Use a local rg binary when available (non-CI only — CI cross-compiles to
+    # different architectures and needs the target-specific download).
+    if [ -z "${CI:-}" ]; then
+        local rg_bin=""
+        command -v rg >/dev/null 2>&1 && rg_bin="$(command -v rg)"
+        # Fallback: check common install locations not always on PATH
+        if [ -z "$rg_bin" ]; then
+            for p in \
+                "$HOME/.cargo/bin/rg" \
+                "/opt/homebrew/bin/rg" \
+                "/usr/local/bin/rg" \
+                "/usr/bin/rg"; do
+                if [ -x "$p" ]; then rg_bin="$p"; break; fi
+            done
+        fi
+        if [ -n "$rg_bin" ]; then
+            export GROK_TOOLS_BUNDLE_RG_PATH="${GROK_TOOLS_BUNDLE_RG_PATH:-$rg_bin}"
+            export GROK_SHELL_BUNDLE_RG_PATH="${GROK_SHELL_BUNDLE_RG_PATH:-$rg_bin}"
+        fi
+    fi
+
     # Zig's clang promotes -Wdate-time to error; libmimalloc-sys and other C
     # crates use __DATE__/__TIME__ macros. Suppress globally for all targets.
     export CFLAGS="${CFLAGS:-} -Wno-date-time"
