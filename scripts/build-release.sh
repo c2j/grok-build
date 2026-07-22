@@ -183,6 +183,13 @@ build_target() {
             ;;
     esac
 
+    # Override release-dist profile's strip=false at link time via Cargo env var.
+    # This avoids needing llvm-strip or cross-architecture binutils — rustc
+    # handles stripping natively during link for all targets.
+    if [ "${STRIP_BIN:-0}" = "1" ]; then
+        export CARGO_PROFILE_RELEASE_DIST_STRIP=symbols
+    fi
+
     cargo zigbuild \
         --profile "$PROFILE" \
         --target "$zig_target" \
@@ -206,20 +213,6 @@ build_target() {
     mkdir -p "$stage"
 
     cp "$bin_path" "$stage/$ship_artifact"
-
-    # Strip debug symbols using llvm-strip from the Rust toolchain.
-    # llvm-strip handles all architectures (ELF, PE) — the system `strip`
-    # only handles the host architecture and fails on cross-compiled binaries.
-    if [ "${STRIP_BIN:-0}" = "1" ]; then
-        local strip_tool
-        strip_tool=$(find "$(rustc --print sysroot)" -name 'llvm-strip' 2>/dev/null | head -1)
-        if [ -n "$strip_tool" ] && [ -x "$strip_tool" ]; then
-            "$strip_tool" --strip-debug "$stage/$ship_artifact"
-            ok "Stripped debug symbols (llvm-strip --strip-debug)."
-        else
-            warn "llvm-strip not found in Rust sysroot; binary will be large."
-        fi
-    fi
 
     # ── zip ──────────────────────────────────────────────────────────────────
     local zip_name="${PACKAGE_NAME}-${VERSION}-${platform_tag}.zip"
