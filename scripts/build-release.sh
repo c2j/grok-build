@@ -4,7 +4,7 @@
 # Windows (x86_64), then package each target as a versioned .zip.
 #
 # Targets:
-#   linux-x86_64   glibc >= 2.31  (Ubuntu 20.04+)
+#   linux-x86_64   glibc >= 2.28  (Ubuntu 18.04+, CentOS 8+)
 #   linux-aarch64  glibc >= 2.31  (Ubuntu 20.04+)
 #   windows-x86_64 Win7+           (MinGW-w64 static CRT)
 #
@@ -65,7 +65,7 @@ info "Version: $VERSION"
 BIN_NAME="xai-grok-pager"          # cargo artifact name
 SHIP_NAME="grok"                   # shipped binary name
 PROFILE="release-dist"             # distribution profile from Cargo.toml
-GLIBC_MIN="2.31"                   # minimum glibc for Linux targets
+GLIBC_MIN="2.28"                   # minimum glibc for Linux targets
 PACKAGE_NAME="${PACKAGE_NAME:-$SHIP_NAME}"
 
 # ─── prerequisite checks ─────────────────────────────────────────────────────
