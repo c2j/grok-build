@@ -87,6 +87,38 @@ cp examples/hooks/bin/stop-verify.sh ~/.grok/hooks/bin/
 chmod +x ~/.grok/hooks/bin/stop-verify.sh
 ```
 
+### 6. workmux Status Bridge (`workmux-status.json`)
+
+**Type:** passive (`UserPromptSubmit` + `PostToolUse` + `Notification` + `Stop` + `SessionEnd`)
+
+Publishes grok's lifecycle state to [workmux](https://github.com/raine/workmux)
+so the agent appears in `workmux status`, `workmux dashboard`, and the
+workmux sidebar alongside other supported agents (claude, codex, gemini,
+opencode, …). Requires `workmux` installed and a tmux session attached;
+silently no-ops otherwise.
+
+Event → status mapping:
+
+| grok event | workmux status |
+|---|---|
+| `UserPromptSubmit` | `working` |
+| `PostToolUse` | `working` |
+| `Notification` | `waiting` |
+| `Stop`, `SessionEnd` | `done` |
+
+**Install:**
+```sh
+mkdir -p ~/.grok/hooks/bin
+cp examples/hooks/workmux-status.json ~/.grok/hooks/
+cp examples/hooks/bin/workmux-status.sh ~/.grok/hooks/bin/
+chmod +x ~/.grok/hooks/bin/workmux-status.sh
+```
+
+See [workmux Integration](../../xai-grok-pager/docs/user-guide/25-workmux-integration.md)
+for the end-to-end workflow. Once `workmux setup` learns the grok path
+(pending [raine/workmux](https://github.com/raine/workmux) upstream),
+`workmux setup` will install the hook automatically.
+
 ## Format
 
 Hook files use the Claude-compatible JSON format:
