@@ -1,8 +1,7 @@
-//! Per-session process-tree reclaim on close, and cross-session isolation.
+//! Closing a session reaps the children enrolled in its process scope, and leaves other sessions' children alone.
 //!
-//! Closing a session reaps the children enrolled in its scope; the reap runs on
-//! the agent thread via `take_session`, so it works even if the actor wedged.
-//! End-to-end reaping of specific subsystems is covered by their own soak tests.
+//! The reap runs on the agent thread via `take_session`, so it works even if the actor wedged.
+//! End-to-end reaping of specific subsystems is covered by those subsystems' own tests.
 
 use std::time::Duration;
 
@@ -27,7 +26,6 @@ async fn still_running(child: &mut tokio::process::Child) -> bool {
         .is_err()
 }
 
-/// Register a session handle carrying `scope`, keyed by `sid`.
 fn insert_session_with_scope(
     agent: &super::MvpAgent,
     sid: &acp::SessionId,
@@ -36,7 +34,7 @@ fn insert_session_with_scope(
     let mut handle = make_test_handle("test", false, None);
     handle.info.id = sid.clone();
     handle.tool_context.process_scope = Some(scope);
-    agent.sessions.borrow_mut().insert(sid.clone(), handle);
+    agent.insert_resident(sid, handle);
 }
 
 #[test]
@@ -51,7 +49,7 @@ fn close_reaps_enrolled_session_child() {
         agent.remove_session(&sid);
 
         assert!(
-            !agent.sessions.borrow().contains_key(&sid),
+            !agent.is_resident(&sid),
             "close must remove the session handle"
         );
         assert!(died(&mut child).await, "close must reap the enrolled child");

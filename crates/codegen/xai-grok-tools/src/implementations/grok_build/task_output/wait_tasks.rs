@@ -76,11 +76,9 @@ impl crate::types::tool_metadata::ToolMetadata for WaitTasksTool {
     }
 }
 
-/// Resolve the model-facing `wait_tasks` description from the finalized toolset,
-/// honoring an explicit config override. Wording lives in the shared
-/// [`xai_tool_types::build_wait_tasks_description`] builder so the CLI and
-/// prod-chat can't drift. When no dedicated background-retrieval tool is
-/// registered, fall back to naming this tool's own get-output sibling.
+/// Resolve the model-facing `wait_tasks` description from the finalized toolset, honoring an explicit config override. Wording lives in the
+/// shared [`xai_tool_types::build_wait_tasks_description`] builder so the CLI and prod-chat can't drift. When no dedicated background-retrieval
+/// tool is registered, fall back to naming this tool's own get-output sibling.
 fn wait_tasks_description(
     renderer: &TemplateRenderer,
     description_override: Option<&str>,
@@ -173,8 +171,10 @@ impl xai_tool_runtime::Tool for WaitTasksTool {
             .timeout_ms
             .map(std::time::Duration::from_millis)
             .unwrap_or(super::DEFAULT_WAIT_TIMEOUT);
-        let timeout =
-            crate::implementations::grok_build::task_output::capped_wait_timeout(input.timeout_ms);
+        let timeout = crate::implementations::grok_build::task_output::capped_wait_timeout(
+            input.timeout_ms,
+            crate::implementations::grok_build::task_output::max_wait_block(),
+        );
 
         let (terminal, backend, read_file_name, max_output_bytes) = {
             let res = resources.lock().await;

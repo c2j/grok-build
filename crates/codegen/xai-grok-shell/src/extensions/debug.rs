@@ -1,12 +1,10 @@
 //! `x.ai/debug/*` extension handlers for local client testing.
 //!
-//! These methods bypass heuristics, sampling, cooldowns, and enabled checks
-//! so client engineers can exercise notification → response flows without
-//! needing real experiments, real sessions, or real model inference.
+//! These methods bypass heuristics, sampling, cooldowns, and enabled checks.
+//! Client engineers can exercise a notification and its response without real experiments, real sessions, or real model inference.
 //!
 //! - `trigger_feedback`: fire a synthetic `FeedbackRequestNotification`.
-//! - `arm_auto_compact`: arm the next turn to unconditionally trigger
-//!   auto-compaction, regardless of context window usage.
+//! - `arm_auto_compact`: make the next turn trigger auto-compaction unconditionally, regardless of context window usage.
 //! - `agent`: agent-process diagnostics (registry counts).
 
 use agent_client_protocol as acp;
@@ -78,14 +76,9 @@ async fn handle_trigger_feedback(agent: &MvpAgent, args: &acp::ExtRequest) -> Ex
     };
 
     let session_id = acp::SessionId::new(params.session_id.clone());
-    let handle = agent
-        .sessions
-        .borrow()
-        .get(&session_id)
-        .cloned()
-        .ok_or_else(|| {
-            acp::Error::invalid_params().data(format!("session not found: {}", params.session_id))
-        })?;
+    let handle = agent.resident_handle(&session_id).ok_or_else(|| {
+        acp::Error::invalid_params().data(format!("session not found: {}", params.session_id))
+    })?;
 
     let (tx, rx) = tokio::sync::oneshot::channel();
     handle
@@ -114,10 +107,7 @@ fn handle_arm_auto_compact(agent: &MvpAgent, args: &acp::ExtRequest) -> ExtResul
     let session_id = acp::SessionId::new(session_id_str);
 
     let handle = agent
-        .sessions
-        .borrow()
-        .get(&session_id)
-        .cloned()
+        .resident_handle(&session_id)
         .ok_or_else(|| acp::Error::invalid_params().data("unknown session id"))?;
 
     handle
